@@ -1,0 +1,17 @@
+{
+  "name": "fordham-video",
+  "owner": {
+    "name": "Fordham Finance"
+  },
+  "metadata": {
+    "description": "Fordham internal video tooling for Claude Code.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "story-video",
+      "source": "./plugins/story-video",
+      "description": "Render branded 1080x1080 story videos with Remotion + optional AI voiceover."
+    }
+  ]
+}

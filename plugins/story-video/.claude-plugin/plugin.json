@@ -1,0 +1,9 @@
+{
+  "name": "story-video",
+  "version": "1.0.0",
+  "description": "Render branded 1080x1080 story videos with Remotion, with optional AI voiceover whose length drives the on-screen beat timing.",
+  "author": {
+    "name": "Fordham Finance"
+  },
+  "keywords": ["remotion", "video", "voiceover", "social", "render"]
+}
