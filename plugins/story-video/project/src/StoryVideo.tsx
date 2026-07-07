@@ -37,7 +37,7 @@ export const calculateStoryMetadata: CalculateMetadataFunction<StoryVideoProps> 
     targetSeqSum = audioFrames + overlap;
   }
 
-  const resolvedDurations = resolveDurations(props.beats, targetSeqSum);
+  const resolvedDurations = resolveDurations(props.beats, targetSeqSum, transitionFrames);
   const durationInFrames = compositionDuration(resolvedDurations, transitionFrames);
 
   return {
@@ -60,7 +60,7 @@ export const StoryVideo: React.FC<StoryVideoProps> = ({
   const durations =
     resolvedDurations && resolvedDurations.length === beats.length
       ? resolvedDurations
-      : resolveDurations(beats, baseSeqSum(beats));
+      : resolveDurations(beats, baseSeqSum(beats), transitionDurationInFrames);
 
   const dims = { width: WIDTH, height: HEIGHT };
 

@@ -15,7 +15,7 @@ Produce square, branded story videos from a list of narrative **beats**, optiona
 |------|-------|
 | Remotion project (run renders here) | `${CLAUDE_PLUGIN_ROOT}/project` |
 | Voiceover generator | `${CLAUDE_PLUGIN_ROOT}/scripts/generate-voiceover.py` |
-| One-shot render+voice wrapper | `${CLAUDE_PLUGIN_ROOT}/scripts/render-with-voice.sh` |
+| One-shot render+voice wrapper (cross-platform) | `${CLAUDE_PLUGIN_ROOT}/scripts/render_with_voice.py` (run with `python`/`python3`; `.sh` shim on mac/Linux) |
 | Voiceover audio (public dir) | `~/.claude/remotion/public/` |
 | **Final video output** | `~/03-OUTPUTS/video/` |
 
@@ -28,26 +28,26 @@ Node dependencies install **automatically** on the first voiceover render (the
 wrapper runs `npm install` if `project/node_modules` is missing). For a silent
 direct render, install them manually once: `cd "${CLAUDE_PLUGIN_ROOT}/project" && npm install`.
 
-For **voiceovers**, add credentials to the Keychain (once per person). The
-generator supports two providers and **auto-selects Magnific** when a
-`MAGNIFIC_API_KEY` is present, otherwise ElevenLabs.
+For **voiceovers**, provide credentials. The generator **auto-selects Magnific**
+when a `MAGNIFIC_API_KEY` is available, otherwise ElevenLabs. Credentials resolve
+**cross-platform** in this order: environment variable → macOS Keychain → secrets
+file. So it runs on macOS, Windows, and Linux:
 
-**Magnific (preferred for the team — one subscription, ElevenLabs voices):**
+**macOS — Keychain (most secure):**
 ```bash
-security add-generic-password -a "$USER" -s MAGNIFIC_API_KEY  -w <your-magnific-api-key>
-security add-generic-password -a "$USER" -s MAGNIFIC_VOICE_ID -w <elevenlabs-voice-id>
+security add-generic-password -U -a "$USER" -s ELEVENLABS_API_KEY -w   # paste when prompted
+security add-generic-password -U -a "$USER" -s MAGNIFIC_API_KEY   -w
 ```
 
-**ElevenLabs direct (alternative):**
-```bash
-security add-generic-password -a "$USER" -s ELEVENLABS_API_KEY  -w <your-api-key>
-security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-id>
+**Windows / Linux — secrets file** at `~/.claude/remotion/secrets.json`
+(see `scripts/secrets.example.json`):
+```json
+{ "ELEVENLABS_API_KEY": "sk-...", "MAGNIFIC_API_KEY": "..." }
 ```
+…or environment variables (Windows: `setx ELEVENLABS_API_KEY "..."`).
 
-- `*_VOICE_ID` is an **ElevenLabs voice id** in both cases. For a consistent brand
-  voice, everyone uses the **same** id — pick a *premade* voice (premade ids are
-  identical across accounts; a cloned voice is tied to its owning account).
-- If only `ELEVENLABS_VOICE_ID` is set, Magnific reuses it.
+- The **voice id** is an ElevenLabs voice id (not a secret) — set it per render
+  via the voices registry (below) rather than storing a credential.
 - Force a provider with `--provider magnific|elevenlabs` (or `VOICE_PROVIDER=` env).
 - **Custom / cloned voices** (made in your own ElevenLabs account) only work via
   **ElevenLabs-direct** — Magnific can't reach private voices. Use `--provider
@@ -153,22 +153,31 @@ Content fields (each type uses the ones marked ✓):
 
 ### Option A — with voiceover (preferred for narrated videos)
 
-`render-with-voice.sh` generates the voiceover (ElevenLabs TTS), syncs beat timing to the audio length, renders, and writes to the output dir with the correct filename.
+`render_with_voice.py` (cross-platform: macOS/Windows/Linux) generates the
+voiceover, syncs beat timing to the audio length, renders, and writes to the
+output dir with the correct filename. **Invoke it with Python** so it works on
+every OS:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/render-with-voice.sh" \
-  --script "Your workflow is leaking hours. Here's how to get them back." \
-  --slug workflow-hook \
-  [--props /path/to/base-props.json] \
-  [--speed 1.0]
+# macOS / Linux
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/render_with_voice.py" \
+  --provider elevenlabs --voice director \
+  --script "Your workflow is leaking hours." --slug workflow-hook \
+  [--props /path/to/base-props.json] [--speed 1.0]
+```
+```powershell
+# Windows (PowerShell / CMD)
+python "%CLAUDE_PLUGIN_ROOT%\scripts\render_with_voice.py" --provider elevenlabs --voice director --script "..." --slug workflow-hook
 ```
 
 - `--script` — narration text (also the audio timing driver).
 - `--slug` — filename slug (sanitized to `[A-Za-z0-9._-]`).
-- `--props` — optional base props (your `beats`). The script merges the voiceover into it. If omitted, the composition's default beats are used.
+- `--voice` / `--voice-id` — pick a brand voice; `--provider` forces magnific|elevenlabs.
+- `--props` — optional base props (your `beats`); the voiceover is merged in. If omitted, the default beats are used.
 - `--speed` — 0.7–1.2 (optional).
 
-It prints a JSON summary and reports size + duration. Temp files are auto-cleaned.
+A `render-with-voice.sh` shim exists for macOS/Linux muscle memory (it just calls
+the Python script). It prints a JSON summary; temp files are auto-cleaned.
 
 ### Option B — direct render (silent, or you already have audio)
 

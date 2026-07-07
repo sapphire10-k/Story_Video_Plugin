@@ -57,29 +57,53 @@ function roundToTarget(
  * make the *visible* timeline match an audio track once transition overlaps are
  * subtracted (see {@link compositionDuration}).
  */
-export function resolveDurations(beats: Beat[], targetSeqSum: number): number[] {
+/**
+ * Structural minimum length for each beat's sequence. A transition overlaps the
+ * beat from each adjacent side and two transitions cannot overlap each other, so
+ * interior beats need 2x the transition and edge beats 1x. Remotion rejects any
+ * sequence shorter than an adjacent transition.
+ */
+function beatMinimums(n: number, transitionFrames: number): number[] {
+  return Array.from({ length: n }, (_, i) => {
+    const sides = (i > 0 ? 1 : 0) + (i < n - 1 ? 1 : 0);
+    return Math.max(1, sides * transitionFrames);
+  });
+}
+
+export function resolveDurations(
+  beats: Beat[],
+  targetSeqSum: number,
+  transitionFrames = 0
+): number[] {
   const n = beats.length;
   if (n === 0) return [];
 
   const base = beats.map((b) => Math.max(1, Math.round(b.durationInFrames)));
   const isFlex = beats.map((b) => !b.fixed);
+  const minDur = beatMinimums(n, transitionFrames);
 
   const fixedSum = base.reduce((s, v, i) => (isFlex[i] ? s : s + v), 0);
   const flexBaseSum = base.reduce((s, v, i) => (isFlex[i] ? s + v : s), 0);
   const flexCount = isFlex.filter(Boolean).length;
 
-  // Nothing to scale (all beats fixed, or no flex weight): use base durations.
+  let resolved: number[];
   if (flexCount === 0 || flexBaseSum === 0) {
-    return base;
+    // Nothing to scale (all beats fixed, or no flex weight): use base durations.
+    resolved = base;
+  } else {
+    // Frames left for the flexible beats after honoring the fixed ones. Guard so
+    // each flex beat can still get at least 1 frame even for tiny targets.
+    const available = Math.max(flexCount, targetSeqSum - fixedSum);
+    const scale = available / flexBaseSum;
+    const scaled = base.map((v, i) => (isFlex[i] ? v * scale : v));
+    resolved = roundToTarget(scaled, isFlex, fixedSum + available);
   }
 
-  // Frames left for the flexible beats after honoring the fixed ones. Guard so
-  // each flex beat can still get at least 1 frame even for tiny targets.
-  const available = Math.max(flexCount, targetSeqSum - fixedSum);
-  const scale = available / flexBaseSum;
-  const scaled = base.map((v, i) => (isFlex[i] ? v * scale : v));
-
-  return roundToTarget(scaled, isFlex, fixedSum + available);
+  // Enforce the structural minimum. This only binds when the target is very
+  // short (e.g. a brief voiceover); otherwise it's a no-op and the exact
+  // audio-length match is preserved. When it binds, the visible timeline is the
+  // shortest length that still fits every beat + its transitions.
+  return resolved.map((v, i) => Math.max(v, minDur[i]));
 }
 
 /** Total base sequence length of the beats (their authored durations). */

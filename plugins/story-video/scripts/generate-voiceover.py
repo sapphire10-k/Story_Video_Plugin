@@ -5,13 +5,15 @@ Supports two providers, both using ElevenLabs voices:
   * magnific   — Magnific/Freepik async voiceover API (x-magnific-api-key)
   * elevenlabs — ElevenLabs TTS API directly (xi-api-key)
 
-By default the provider is auto-selected: Magnific if a MAGNIFIC_API_KEY is in
-the Keychain, otherwise ElevenLabs. Credentials are read from the macOS Keychain,
-the audio is written into the Remotion public/ folder, its duration is measured
-by parsing the audio headers directly (no ffprobe), and a JSON summary is printed
-to stdout.
+By default the provider is auto-selected: Magnific if a MAGNIFIC_API_KEY is
+available, otherwise ElevenLabs. Credentials resolve cross-platform from, in
+order: environment variable, macOS Keychain (macOS only), then a local secrets
+JSON file (~/.claude/remotion/secrets.json) — so this runs on macOS, Windows,
+and Linux. The audio is written into the Remotion public/ folder, its duration
+is measured by parsing the audio headers directly (no ffprobe), and a JSON
+summary is printed to stdout.
 
-Standard library only — no pip dependencies.
+Standard library only — no pip dependencies. Runs on macOS, Windows, and Linux.
 
 Example:
     ./generate-voiceover.py \
@@ -57,38 +59,56 @@ VOICES_FILE = os.path.expanduser(
     os.environ.get("REMOTION_VOICES_FILE", "~/.claude/remotion/voices.json")
 )
 
+# Cross-platform secrets store (used on Windows/Linux, and as a macOS fallback).
+SECRETS_FILE = os.path.expanduser(
+    os.environ.get("REMOTION_SECRETS_FILE", "~/.claude/remotion/secrets.json")
+)
+
 SPEED_MIN, SPEED_MAX = 0.7, 1.2
 
 
 # --------------------------------------------------------------------------- #
-# Keychain
+# Credentials — cross-platform: env var -> macOS Keychain -> secrets file
 # --------------------------------------------------------------------------- #
-def keychain_lookup(service: str) -> "str | None":
-    """Return the generic-password value for `service`, or None if absent."""
+def _keychain_lookup(name: str) -> "str | None":
+    """macOS Keychain lookup. Returns None on non-macOS or if absent."""
+    if sys.platform != "darwin":
+        return None
     try:
         result = subprocess.run(
-            ["security", "find-generic-password", "-s", service, "-w"],
+            ["security", "find-generic-password", "-s", name, "-w"],
             capture_output=True,
             text=True,
             check=False,
         )
     except FileNotFoundError:
-        die("`security` command not found — this script requires macOS.")
+        return None
     if result.returncode != 0:
         return None
-    secret = result.stdout.strip()
-    return secret or None
+    return result.stdout.strip() or None
 
 
-def keychain_secret(service: str) -> str:
-    """Return the Keychain value for `service`, or exit with guidance."""
-    secret = keychain_lookup(service)
-    if not secret:
+def _load_secrets() -> dict:
+    """Load the local secrets JSON file, or {} if missing/invalid."""
+    try:
+        with open(SECRETS_FILE) as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def get_secret(name: str, required: bool = False) -> "str | None":
+    """Resolve a credential from (1) env var, (2) macOS Keychain, (3) secrets file."""
+    value = os.environ.get(name) or _keychain_lookup(name) or _load_secrets().get(name)
+    if not value and required:
         die(
-            f"Could not read '{service}' from the Keychain. Add it with:\n"
-            f"  security add-generic-password -a \"$USER\" -s {service} -w <value>"
+            f"Missing credential '{name}'. Provide it one of these ways:\n"
+            f"  - macOS Keychain:  security add-generic-password -U -a \"$USER\" -s {name} -w\n"
+            f"  - Environment var: set {name} (Windows: setx {name} \"<value>\")\n"
+            f"  - Secrets file:    add \"{name}\": \"<value>\" to {SECRETS_FILE}"
         )
-    return secret
+    return value
 
 
 # --------------------------------------------------------------------------- #
@@ -395,7 +415,7 @@ def choose_provider(requested: str) -> str:
     """Resolve 'auto' to a concrete provider based on available credentials."""
     if requested != "auto":
         return requested
-    return "magnific" if keychain_lookup(MAGNIFIC_KEY_SERVICE) else "elevenlabs"
+    return "magnific" if get_secret(MAGNIFIC_KEY_SERVICE) else "elevenlabs"
 
 
 def load_voices() -> dict:
@@ -419,13 +439,13 @@ def resolve_voice_id(args: argparse.Namespace, provider: str) -> str:
             known = ", ".join(sorted(voices)) or "(none defined)"
             die(f"Unknown --voice '{args.voice}'. Defined: {known}. File: {VOICES_FILE}")
         return vid
-    # Fall back to the Keychain default for the provider.
+    # Fall back to the stored default voice id for the provider.
     if provider == "magnific":
-        vid = keychain_lookup(MAGNIFIC_VOICE_SERVICE) or keychain_lookup(ELEVENLABS_VOICE_SERVICE)
+        vid = get_secret(MAGNIFIC_VOICE_SERVICE) or get_secret(ELEVENLABS_VOICE_SERVICE)
     else:
-        vid = keychain_lookup(ELEVENLABS_VOICE_SERVICE)
+        vid = get_secret(ELEVENLABS_VOICE_SERVICE)
     if not vid:
-        die("No voice id. Use --voice-id <id>, --voice <name>, or set a Keychain voice id.")
+        die("No voice id. Use --voice-id <id>, --voice <name>, or store a default voice id.")
     return vid
 
 
@@ -478,10 +498,10 @@ def main(argv=None) -> int:
     voice_id = resolve_voice_id(args, provider)
 
     if provider == "magnific":
-        api_key = keychain_secret(MAGNIFIC_KEY_SERVICE)
+        api_key = get_secret(MAGNIFIC_KEY_SERVICE, required=True)
         audio, source_url = synthesize_magnific(api_key, voice_id, text, args.speed)
     else:
-        api_key = keychain_secret(ELEVENLABS_KEY_SERVICE)
+        api_key = get_secret(ELEVENLABS_KEY_SERVICE, required=True)
         audio = synthesize_elevenlabs(api_key, voice_id, text, args.speed)
         source_url = ""
 

@@ -35,17 +35,26 @@ The **Director** (org owner, not just admin) does one of:
 
 ## Credentials each teammate needs (once)
 
-- **Magnific** (premade/library voices, draws on the team subscription):
-  ```bash
-  security add-generic-password -U -a "$USER" -s MAGNIFIC_API_KEY -w
-  ```
-- **ElevenLabs** (only if they'll use our custom brand voices — see below):
-  ```bash
-  security add-generic-password -U -a "$USER" -s ELEVENLABS_API_KEY -w
-  ```
-- **Brand voices registry** — copy [`plugins/story-video/scripts/voices.example.json`](plugins/story-video/scripts/voices.example.json)
-  to `~/.claude/remotion/voices.json` and fill in the ids. Then render with
-  `--voice manisha` / `--voice director`.
+Works on **macOS, Windows, and Linux**. Credentials resolve from env var → macOS
+Keychain → secrets file.
+
+**macOS** — Keychain:
+```bash
+security add-generic-password -U -a "$USER" -s ELEVENLABS_API_KEY -w   # paste when prompted
+security add-generic-password -U -a "$USER" -s MAGNIFIC_API_KEY   -w
+```
+
+**Windows / Linux** — create `~/.claude/remotion/secrets.json`
+(template: [`scripts/secrets.example.json`](plugins/story-video/scripts/secrets.example.json)):
+```json
+{ "ELEVENLABS_API_KEY": "sk-...", "MAGNIFIC_API_KEY": "..." }
+```
+(Or set env vars — Windows: `setx ELEVENLABS_API_KEY "..."`.)
+
+**Brand voices registry** (all OSes) — copy
+[`scripts/voices.example.json`](plugins/story-video/scripts/voices.example.json)
+to `~/.claude/remotion/voices.json` and fill in the ids, then render with
+`--voice manisha` / `--voice director`.
 
 ---
 

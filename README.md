@@ -86,25 +86,26 @@ The first voiceover render runs `npm install` for you (~1 min, one-off). For a
 cd ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/project && npm install
 ```
 
-### 2. Voiceover credentials
-The generator **auto-selects Magnific** if a `MAGNIFIC_API_KEY` is in the Keychain,
-otherwise ElevenLabs. Add whichever you use (once per person):
+### 2. Voiceover credentials (cross-platform)
+The generator **auto-selects Magnific** if a `MAGNIFIC_API_KEY` is available,
+otherwise ElevenLabs. Credentials resolve from **env var → macOS Keychain →
+secrets file**, so this works on macOS, Windows, and Linux.
 
-**Magnific (our team subscription — uses ElevenLabs voices):**
+**macOS — Keychain (secure):**
 ```bash
-security add-generic-password -a "$USER" -s MAGNIFIC_API_KEY  -w <your-magnific-api-key>
-security add-generic-password -a "$USER" -s MAGNIFIC_VOICE_ID -w <elevenlabs-voice-id>
+security add-generic-password -U -a "$USER" -s ELEVENLABS_API_KEY -w   # paste when prompted
+security add-generic-password -U -a "$USER" -s MAGNIFIC_API_KEY   -w
 ```
 
-**ElevenLabs direct (alternative):**
-```bash
-security add-generic-password -a "$USER" -s ELEVENLABS_API_KEY  -w <your-api-key>
-security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-id>
+**Windows / Linux — secrets file** `~/.claude/remotion/secrets.json`
+(template: `plugins/story-video/scripts/secrets.example.json`):
+```json
+{ "ELEVENLABS_API_KEY": "sk-...", "MAGNIFIC_API_KEY": "..." }
 ```
+Or env vars — Windows: `setx ELEVENLABS_API_KEY "..."`.
 
-- `*_VOICE_ID` is an **ElevenLabs voice id** either way. For a consistent brand
-  voice, everyone uses the **same premade** voice id (premade ids are identical
-  across accounts; a cloned voice is locked to its owning account).
+- The **voice id** is an ElevenLabs voice id (not a secret) — set per render via
+  the voices registry (`~/.claude/remotion/voices.json`, `--voice <name>`).
 - Force a provider: `--provider magnific|elevenlabs`, or `VOICE_PROVIDER=` env.
 
 ---
@@ -113,12 +114,13 @@ security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-i
 
 Ask Claude: **"Render a 10-second test story video with a voiceover, slug `hello-team`."**
 
-Or run the wrapper directly:
+Or run the wrapper directly (cross-platform — use `python3` on mac/Linux, `python` on Windows):
 ```bash
-~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/scripts/render-with-voice.sh \
+python3 ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/scripts/render_with_voice.py \
   --script "This is our team video pipeline. If you can hear me, it works." \
   --slug hello-team
 ```
+(macOS/Linux also have a `render-with-voice.sh` shim that calls the same script.)
 
 **Expected:** a JSON line like
 ```json
@@ -136,7 +138,7 @@ npx remotion render StoryVideo /tmp/test.mp4 --scale=0.5 --log=error
 
 ## Requirements
 
-- **macOS** (credentials read from the Keychain via `security`)
+- **macOS, Windows, or Linux** (credentials via env var / macOS Keychain / secrets file)
 - **Node.js + npm** (Remotion)
 - **Python 3** (stdlib only — no pip packages)
 - A **Magnific** or **ElevenLabs** account (only for voiceovers)
