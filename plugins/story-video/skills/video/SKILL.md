@@ -28,15 +28,27 @@ Node dependencies install **automatically** on the first voiceover render (the
 wrapper runs `npm install` if `project/node_modules` is missing). For a silent
 direct render, install them manually once: `cd "${CLAUDE_PLUGIN_ROOT}/project" && npm install`.
 
-For **voiceovers**, add ElevenLabs credentials to the Keychain (once per person):
+For **voiceovers**, add credentials to the Keychain (once per person). The
+generator supports two providers and **auto-selects Magnific** when a
+`MAGNIFIC_API_KEY` is present, otherwise ElevenLabs.
+
+**Magnific (preferred for the team — one subscription, ElevenLabs voices):**
+```bash
+security add-generic-password -a "$USER" -s MAGNIFIC_API_KEY  -w <your-magnific-api-key>
+security add-generic-password -a "$USER" -s MAGNIFIC_VOICE_ID -w <elevenlabs-voice-id>
+```
+
+**ElevenLabs direct (alternative):**
 ```bash
 security add-generic-password -a "$USER" -s ELEVENLABS_API_KEY  -w <your-api-key>
 security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-id>
 ```
-For a consistent brand voice across teammates on separate ElevenLabs accounts,
-everyone should use the **same `ELEVENLABS_VOICE_ID`** — pick a shared *premade*
-voice from the ElevenLabs voice library (premade voice IDs are identical across
-accounts; a custom cloned voice is tied to the account that made it).
+
+- `*_VOICE_ID` is an **ElevenLabs voice id** in both cases. For a consistent brand
+  voice, everyone uses the **same** id — pick a *premade* voice (premade ids are
+  identical across accounts; a cloned voice is tied to its owning account).
+- If only `ELEVENLABS_VOICE_ID` is set, Magnific reuses it.
+- Force a provider with `--provider magnific|elevenlabs` (or `VOICE_PROVIDER=` env).
 
 ---
 

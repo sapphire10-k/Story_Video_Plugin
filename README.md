@@ -2,62 +2,110 @@
 
 A Claude Code plugin that renders branded **1080×1080 story videos** with Remotion, with an optional AI voiceover whose length drives the on-screen beat timing. Ships the `video` skill, the Remotion project, and the render scripts together.
 
-This repo is a **plugin marketplace** (`fordham-video`) containing one plugin (`story-video`).
+This repo is a **plugin marketplace** (`fordham-video`) containing one plugin (`story-video`). Voiceovers can be generated via **Magnific** (Freepik) or **ElevenLabs**.
 
 ---
 
-## Install (each team member)
+## Install
 
-**In Claude Code**, run these two slash commands:
+### Desktop app (what most of us use)
+
+The `/plugin` **chat** command only exists in the terminal CLI — in the desktop app, use the UI:
+
+1. Open the **Claude desktop app** → **Code** tab.
+2. Click the **+** button next to the prompt box → **Plugins**.
+3. **Manage plugins → Add marketplace**, and enter the repo:
+   `sapphire10-k/Story_Video_Plugin`
+4. The **fordham-video** marketplace appears → **install** the **story-video** plugin.
+5. Fully quit (⌘Q) and reopen the app if it doesn't appear immediately.
+
+### Terminal CLI (if you use `claude` in a terminal instead)
 
 ```
 /plugin marketplace add sapphire10-k/Story_Video_Plugin
 /plugin install story-video@fordham-video
+/reload-plugins
 ```
 
-> `sapphire10-k/Story_Video_Plugin` is the GitHub repo. `fordham-video` is the
-> marketplace name and `story-video` is the plugin name (both defined in the
-> manifests). If Claude Code doesn't pick up the plugin immediately, run
-> `/reload-plugins` (or restart the session).
+### Verify + invoke
 
-### Verify it loaded
+Plugin skills are **namespaced**: this one is **`/story-video:video`** (not `/video`).
+You usually don't type it — just ask in plain English (*"make a 15-second story
+video hooking on our new product"*) and it triggers automatically.
 
-- Run `/plugin` → open the **Errors** tab; it should be empty.
-- Type `/story-video:` — the `video` skill should appear in the menu.
+---
 
-Plugin skills are **namespaced**, so this skill is invoked as **`/story-video:video`**
-(not `/video`). You usually don't need to type it — just ask Claude in plain
-English (e.g. *"make a 15-second story video hooking on our new product"*) and it
-will trigger the skill automatically.
+## Making it available to the whole team
+
+Because the marketplace is a **public GitHub repo**, there are two routes:
+
+### A. Each teammate self-installs (no admin needed)
+Follow the **Desktop app** steps above. This works unless your org has locked
+plugins down (see the caveat below).
+
+### B. Admin pushes it org-wide (nobody has to install manually)
+This requires **org owner** rights (your Director), not just admin:
+
+- **Admin console** (Teams/Enterprise): the Director opens
+  `https://claude.ai/admin-settings/claude-code` and adds managed settings so the
+  marketplace + plugin deploy to everyone automatically, or
+- **Managed settings file** (deployable via MDM — Jamf/Kandji — or by hand) at
+  `/Library/Application Support/ClaudeCode/managed-settings.json` on each Mac:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "fordham-video": {
+      "source": { "source": "github", "repo": "sapphire10-k/Story_Video_Plugin" }
+    }
+  },
+  "enabledPlugins": { "story-video@fordham-video": true }
+}
+```
+`enabledPlugins` auto-enables it after install, so teammates do nothing.
+
+### Roles & the blocker to check
+- A regular **admin cannot** push a plugin org-wide — only the **owner/Director** can (admin console or the managed file).
+- If a teammate tries to add the marketplace and sees *"not allowed by organization policy"*, your org has **`strictKnownMarketplaces`** set. The Director must **allowlist** `sapphire10-k/Story_Video_Plugin` in the admin console before anyone can self-install.
+
+**Short version for your situation:** ask each teammate to self-install (route A) first. If they hit the policy error, the Director needs to either allowlist the repo or deploy it org-wide (route B).
 
 ---
 
 > **Tip:** the manual terminal commands below assume the default install path
-> (`~/.claude/plugins/marketplaces/fordham-video/...`). It can vary by setup — the
-> reliable way is to just **ask Claude** to run setup/tests, since the skill
-> resolves the plugin location automatically via `${CLAUDE_PLUGIN_ROOT}`.
+> (`~/.claude/plugins/marketplaces/fordham-video/...`). It can vary — the reliable
+> way is to just **ask Claude** to run setup/tests, since the skill resolves the
+> plugin location automatically via `${CLAUDE_PLUGIN_ROOT}`.
 
 ## One-time setup per machine
 
 ### 1. Node dependencies — automatic
-The first time you render **with a voiceover**, the wrapper runs `npm install`
-for you (~1 minute, one-off). For a **silent** render you can pre-install:
+The first voiceover render runs `npm install` for you (~1 min, one-off). For a
+**silent** render, pre-install:
 ```bash
-# find the installed plugin, then install deps:
-cd ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/project
-npm install
+cd ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/project && npm install
 ```
 
-### 2. ElevenLabs credentials — only for voiceovers
-Add **your own** ElevenLabs API key + a voice ID to the macOS Keychain:
+### 2. Voiceover credentials
+The generator **auto-selects Magnific** if a `MAGNIFIC_API_KEY` is in the Keychain,
+otherwise ElevenLabs. Add whichever you use (once per person):
+
+**Magnific (our team subscription — uses ElevenLabs voices):**
+```bash
+security add-generic-password -a "$USER" -s MAGNIFIC_API_KEY  -w <your-magnific-api-key>
+security add-generic-password -a "$USER" -s MAGNIFIC_VOICE_ID -w <elevenlabs-voice-id>
+```
+
+**ElevenLabs direct (alternative):**
 ```bash
 security add-generic-password -a "$USER" -s ELEVENLABS_API_KEY  -w <your-api-key>
 security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-id>
 ```
-For a **consistent brand voice** across the team, everyone should use the **same
-`ELEVENLABS_VOICE_ID`** — choose a shared *premade* voice from the ElevenLabs
-voice library (premade IDs are the same on every account; a cloned voice is tied
-to the one account that created it).
+
+- `*_VOICE_ID` is an **ElevenLabs voice id** either way. For a consistent brand
+  voice, everyone uses the **same premade** voice id (premade ids are identical
+  across accounts; a cloned voice is locked to its owning account).
+- Force a provider: `--provider magnific|elevenlabs`, or `VOICE_PROVIDER=` env.
 
 ---
 
@@ -65,7 +113,7 @@ to the one account that created it).
 
 Ask Claude: **"Render a 10-second test story video with a voiceover, slug `hello-team`."**
 
-Or run the wrapper directly from a terminal:
+Or run the wrapper directly:
 ```bash
 ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/scripts/render-with-voice.sh \
   --script "This is our team video pipeline. If you can hear me, it works." \
@@ -76,10 +124,9 @@ Or run the wrapper directly from a terminal:
 ```json
 {"output":"/Users/<you>/03-OUTPUTS/video/YYYY-MM-DD-StoryVideo-hello-team.mp4","size":"~2M","duration_secs":9.x}
 ```
-and an MP4 at `~/03-OUTPUTS/video/YYYY-MM-DD-StoryVideo-hello-team.mp4` (1080×1080,
-duration matching the voiceover). Open it to confirm audio + visuals.
+and an MP4 at `~/03-OUTPUTS/video/YYYY-MM-DD-StoryVideo-hello-team.mp4` (1080×1080).
 
-**Silent test (no ElevenLabs needed):**
+**Silent test (no voiceover credentials needed):**
 ```bash
 cd ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/project
 npx remotion render StoryVideo /tmp/test.mp4 --scale=0.5 --log=error
@@ -89,26 +136,16 @@ npx remotion render StoryVideo /tmp/test.mp4 --scale=0.5 --log=error
 
 ## Requirements
 
-- **macOS** (credentials are read from the Keychain via `security`)
-- **Node.js + npm** (for Remotion)
+- **macOS** (credentials read from the Keychain via `security`)
+- **Node.js + npm** (Remotion)
 - **Python 3** (stdlib only — no pip packages)
-- An **ElevenLabs** account (only for voiceovers — see the team billing note below)
+- A **Magnific** or **ElevenLabs** account (only for voiceovers)
 
----
-
-## Team ElevenLabs setup (cost-effective)
-
-Programmatic API access works on any paid ElevenLabs tier, and their ToS says
-**not to share one account's API key**. So the cheapest compliant setup for 3
-people is **one subscription each**, sized to volume:
-
-- Light use → **3 × Starter ≈ $18/mo total** (30k credits each).
-- More volume / higher quality → **3 × Creator ≈ $66/mo total** (121k credits each).
-- A shared **Scale** plan (3 seats, shared pool) is **$299/mo** — only worth it at
-  very high combined volume or if you need shared-workspace admin.
-
-Each person puts *their own* key in the Keychain (step 2 above) but uses the
-**same premade `ELEVENLABS_VOICE_ID`** for a consistent brand voice.
+### Voiceover cost notes
+- **Magnific:** if the team already has a Magnific subscription, its voiceover API
+  (ElevenLabs Turbo v2.5) draws on those credits — no separate ElevenLabs seats.
+- **ElevenLabs direct:** their ToS says don't share one key; cheapest compliant is
+  one subscription each — **3 × Starter ≈ $18/mo** (light use) or **3 × Creator ≈ $66/mo**.
 
 ---
 
@@ -120,7 +157,7 @@ plugins/story-video/
   .claude-plugin/plugin.json           # plugin manifest (name: story-video)
   skills/video/SKILL.md                # the "video" skill (auto-loaded, /story-video:video)
   scripts/
-    generate-voiceover.py              # ElevenLabs TTS -> MP3 + duration (stdlib only)
+    generate-voiceover.py              # Magnific OR ElevenLabs TTS -> audio + duration (stdlib only)
     render-with-voice.sh               # voiceover + timing-sync + render (auto-installs deps)
   project/                             # the Remotion project
     src/... package.json ...
@@ -132,4 +169,5 @@ Output always lands in `~/03-OUTPUTS/video/YYYY-MM-DD-StoryVideo-<slug>.mp4`.
 
 Bump `version` in both `.claude-plugin/marketplace.json` and
 `plugins/story-video/.claude-plugin/plugin.json`, commit, and push. Team members
-run `/plugin marketplace update fordham-video`, then `/reload-plugins`.
+update via the desktop app's **Manage plugins** (or `/plugin marketplace update fordham-video`
+in the CLI), then reload.
