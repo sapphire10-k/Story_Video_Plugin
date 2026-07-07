@@ -1,0 +1,8 @@
+{
+  "extraKnownMarketplaces": {
+    "fordham-video": {
+      "source": { "source": "github", "repo": "sapphire10-k/Story_Video_Plugin" }
+    }
+  },
+  "enabledPlugins": { "story-video@fordham-video": true }
+}
