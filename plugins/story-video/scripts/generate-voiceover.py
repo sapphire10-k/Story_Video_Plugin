@@ -51,6 +51,12 @@ PUBLIC_DIR = os.path.expanduser(
     os.environ.get("REMOTION_PUBLIC_DIR", "~/.claude/remotion/public")
 )
 
+# Named brand voices -> ElevenLabs voice ids, selected with --voice <name>. Kept
+# LOCAL (never committed to the plugin repo) since they're internal to the team.
+VOICES_FILE = os.path.expanduser(
+    os.environ.get("REMOTION_VOICES_FILE", "~/.claude/remotion/voices.json")
+)
+
 SPEED_MIN, SPEED_MAX = 0.7, 1.2
 
 
@@ -392,6 +398,37 @@ def choose_provider(requested: str) -> str:
     return "magnific" if keychain_lookup(MAGNIFIC_KEY_SERVICE) else "elevenlabs"
 
 
+def load_voices() -> dict:
+    """Load the local name->voice_id registry, or {} if missing/invalid."""
+    try:
+        with open(VOICES_FILE) as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def resolve_voice_id(args: argparse.Namespace, provider: str) -> str:
+    """Pick the voice id: --voice-id > --voice <name> > keychain default."""
+    if args.voice_id:
+        return args.voice_id
+    if args.voice:
+        voices = load_voices()
+        vid = voices.get(args.voice)
+        if not vid:
+            known = ", ".join(sorted(voices)) or "(none defined)"
+            die(f"Unknown --voice '{args.voice}'. Defined: {known}. File: {VOICES_FILE}")
+        return vid
+    # Fall back to the Keychain default for the provider.
+    if provider == "magnific":
+        vid = keychain_lookup(MAGNIFIC_VOICE_SERVICE) or keychain_lookup(ELEVENLABS_VOICE_SERVICE)
+    else:
+        vid = keychain_lookup(ELEVENLABS_VOICE_SERVICE)
+    if not vid:
+        die("No voice id. Use --voice-id <id>, --voice <name>, or set a Keychain voice id.")
+    return vid
+
+
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate a voiceover (Magnific or ElevenLabs) for Remotion."
@@ -414,6 +451,16 @@ def parse_args(argv=None) -> argparse.Namespace:
         default=os.environ.get("VOICE_PROVIDER", "auto"),
         help="TTS provider. 'auto' uses Magnific if MAGNIFIC_API_KEY is set, else ElevenLabs.",
     )
+    parser.add_argument(
+        "--voice",
+        default=None,
+        help=f"Named voice from the registry ({VOICES_FILE}), e.g. 'director'.",
+    )
+    parser.add_argument(
+        "--voice-id",
+        default=None,
+        help="Explicit ElevenLabs voice id (overrides --voice and the Keychain default).",
+    )
     return parser.parse_args(argv)
 
 
@@ -428,21 +475,13 @@ def main(argv=None) -> int:
     resolve_output(args.output)
 
     provider = choose_provider(args.provider)
+    voice_id = resolve_voice_id(args, provider)
 
     if provider == "magnific":
         api_key = keychain_secret(MAGNIFIC_KEY_SERVICE)
-        # Magnific expects an ElevenLabs voice_id; reuse the ElevenLabs one if a
-        # dedicated Magnific voice id isn't set.
-        voice_id = keychain_lookup(MAGNIFIC_VOICE_SERVICE) or keychain_lookup(ELEVENLABS_VOICE_SERVICE)
-        if not voice_id:
-            die(
-                "No voice id found. Add one with:\n"
-                f"  security add-generic-password -a \"$USER\" -s {MAGNIFIC_VOICE_SERVICE} -w <elevenlabs-voice-id>"
-            )
         audio, source_url = synthesize_magnific(api_key, voice_id, text, args.speed)
     else:
         api_key = keychain_secret(ELEVENLABS_KEY_SERVICE)
-        voice_id = keychain_secret(ELEVENLABS_VOICE_SERVICE)
         audio = synthesize_elevenlabs(api_key, voice_id, text, args.speed)
         source_url = ""
 

@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy this to ~/.claude/remotion/voices.json and fill in your team's ElevenLabs voice ids. Names are what you pass to --voice. This file is local per machine and is NOT your API key.",
+  "manisha": "REPLACE_WITH_ELEVENLABS_VOICE_ID",
+  "director": "REPLACE_WITH_ELEVENLABS_VOICE_ID"
+}

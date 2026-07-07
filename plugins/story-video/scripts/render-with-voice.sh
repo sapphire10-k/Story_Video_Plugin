@@ -56,6 +56,8 @@ SLUG=""
 PROPS_PATH=""
 SPEED=""
 PROVIDER=""
+VOICE=""
+VOICE_ID=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -69,6 +71,10 @@ while [[ $# -gt 0 ]]; do
     --speed=*)    SPEED="${1#*=}"; shift ;;
     --provider)   PROVIDER="${2:-}"; shift 2 ;;
     --provider=*) PROVIDER="${1#*=}"; shift ;;
+    --voice)      VOICE="${2:-}"; shift 2 ;;
+    --voice=*)    VOICE="${1#*=}"; shift ;;
+    --voice-id)   VOICE_ID="${2:-}"; shift 2 ;;
+    --voice-id=*) VOICE_ID="${1#*=}"; shift ;;
     -h|--help)    usage; exit 0 ;;
     *)            die "unknown argument: $1" ;;
   esac
@@ -104,6 +110,8 @@ echo "› Generating voiceover (${#SCRIPT_TEXT} chars)…" >&2
 gen_args=(--script "$SCRIPT_TEXT" --output "${SLUG_CLEAN}.mp3")
 [[ -n "$SPEED" ]] && gen_args+=(--speed "$SPEED")
 [[ -n "$PROVIDER" ]] && gen_args+=(--provider "$PROVIDER")
+[[ -n "$VOICE" ]] && gen_args+=(--voice "$VOICE")
+[[ -n "$VOICE_ID" ]] && gen_args+=(--voice-id "$VOICE_ID")
 
 VO_JSON="$(python3 "$VOICEOVER_GEN" "${gen_args[@]}")" \
   || die "voiceover generation failed"

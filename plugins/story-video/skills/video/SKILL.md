@@ -51,8 +51,24 @@ security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-i
 - Force a provider with `--provider magnific|elevenlabs` (or `VOICE_PROVIDER=` env).
 - **Custom / cloned voices** (made in your own ElevenLabs account) only work via
   **ElevenLabs-direct** — Magnific can't reach private voices. Use `--provider
-  elevenlabs` with `ELEVENLABS_API_KEY` + `ELEVENLABS_VOICE_ID` for those. Magnific
-  is for **premade / shared-library** voices.
+  elevenlabs` for those. Magnific is for **premade / shared-library** voices.
+
+### Named brand voices (registry)
+
+Voice ids aren't secrets, so brand voices live in a **local** JSON registry
+(`~/.claude/remotion/voices.json`, not committed) mapping names → ElevenLabs voice ids:
+```json
+{ "manisha": "LAzZ…", "director": "jS55…" }
+```
+Select one per render — no Keychain juggling:
+```bash
+./render-with-voice.sh --provider elevenlabs --voice director --script "…" --slug board-update
+```
+- `--voice <name>` resolves from the registry; `--voice-id <id>` passes a raw id;
+  with neither, the Keychain default (`ELEVENLABS_VOICE_ID`) is used.
+- When the user names a person ("in the director's voice"), map it to `--voice <name>`.
+- See `scripts/voices.example.json` for the format; each teammate keeps their own
+  `~/.claude/remotion/voices.json`.
 
 ---
 
