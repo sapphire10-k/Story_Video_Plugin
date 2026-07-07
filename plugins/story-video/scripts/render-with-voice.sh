@@ -55,19 +55,22 @@ SCRIPT_TEXT=""
 SLUG=""
 PROPS_PATH=""
 SPEED=""
+PROVIDER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --script)   SCRIPT_TEXT="${2:-}"; shift 2 ;;
-    --script=*) SCRIPT_TEXT="${1#*=}"; shift ;;
-    --slug)     SLUG="${2:-}"; shift 2 ;;
-    --slug=*)   SLUG="${1#*=}"; shift ;;
-    --props)    PROPS_PATH="${2:-}"; shift 2 ;;
-    --props=*)  PROPS_PATH="${1#*=}"; shift ;;
-    --speed)    SPEED="${2:-}"; shift 2 ;;
-    --speed=*)  SPEED="${1#*=}"; shift ;;
-    -h|--help)  usage; exit 0 ;;
-    *)          die "unknown argument: $1" ;;
+    --script)     SCRIPT_TEXT="${2:-}"; shift 2 ;;
+    --script=*)   SCRIPT_TEXT="${1#*=}"; shift ;;
+    --slug)       SLUG="${2:-}"; shift 2 ;;
+    --slug=*)     SLUG="${1#*=}"; shift ;;
+    --props)      PROPS_PATH="${2:-}"; shift 2 ;;
+    --props=*)    PROPS_PATH="${1#*=}"; shift ;;
+    --speed)      SPEED="${2:-}"; shift 2 ;;
+    --speed=*)    SPEED="${1#*=}"; shift ;;
+    --provider)   PROVIDER="${2:-}"; shift 2 ;;
+    --provider=*) PROVIDER="${1#*=}"; shift ;;
+    -h|--help)    usage; exit 0 ;;
+    *)            die "unknown argument: $1" ;;
   esac
 done
 
@@ -100,6 +103,7 @@ fi
 echo "› Generating voiceover (${#SCRIPT_TEXT} chars)…" >&2
 gen_args=(--script "$SCRIPT_TEXT" --output "${SLUG_CLEAN}.mp3")
 [[ -n "$SPEED" ]] && gen_args+=(--speed "$SPEED")
+[[ -n "$PROVIDER" ]] && gen_args+=(--provider "$PROVIDER")
 
 VO_JSON="$(python3 "$VOICEOVER_GEN" "${gen_args[@]}")" \
   || die "voiceover generation failed"

@@ -49,6 +49,10 @@ security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-i
   identical across accounts; a cloned voice is tied to its owning account).
 - If only `ELEVENLABS_VOICE_ID` is set, Magnific reuses it.
 - Force a provider with `--provider magnific|elevenlabs` (or `VOICE_PROVIDER=` env).
+- **Custom / cloned voices** (made in your own ElevenLabs account) only work via
+  **ElevenLabs-direct** — Magnific can't reach private voices. Use `--provider
+  elevenlabs` with `ELEVENLABS_API_KEY` + `ELEVENLABS_VOICE_ID` for those. Magnific
+  is for **premade / shared-library** voices.
 
 ---
 
