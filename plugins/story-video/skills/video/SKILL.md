@@ -24,14 +24,19 @@ e.g. `2026-07-05-StoryVideo-q3-launch.mp4`. `render-with-voice.sh` applies this 
 
 ## First-time setup (once per machine)
 
-1. **Install project deps:** `cd "${CLAUDE_PLUGIN_ROOT}/project" && npm install`
-2. **Add ElevenLabs credentials to the Keychain** (only needed for voiceovers):
-   ```bash
-   security add-generic-password -a "$USER" -s ELEVENLABS_API_KEY  -w <your-api-key>
-   security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-id>
-   ```
+Node dependencies install **automatically** on the first voiceover render (the
+wrapper runs `npm install` if `project/node_modules` is missing). For a silent
+direct render, install them manually once: `cd "${CLAUDE_PLUGIN_ROOT}/project" && npm install`.
 
-If a render fails with "dependencies missing", run step 1.
+For **voiceovers**, add ElevenLabs credentials to the Keychain (once per person):
+```bash
+security add-generic-password -a "$USER" -s ELEVENLABS_API_KEY  -w <your-api-key>
+security add-generic-password -a "$USER" -s ELEVENLABS_VOICE_ID -w <your-voice-id>
+```
+For a consistent brand voice across teammates on separate ElevenLabs accounts,
+everyone should use the **same `ELEVENLABS_VOICE_ID`** — pick a shared *premade*
+voice from the ElevenLabs voice library (premade voice IDs are identical across
+accounts; a custom cloned voice is tied to the account that made it).
 
 ---
 

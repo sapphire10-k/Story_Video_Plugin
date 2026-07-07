@@ -83,7 +83,12 @@ command -v python3 >/dev/null 2>&1 || die "python3 not found"
 command -v npx >/dev/null 2>&1     || die "npx not found"
 [[ -f "$VOICEOVER_GEN" ]]          || die "voiceover generator not found: $VOICEOVER_GEN"
 [[ -d "$REMOTION_DIR" ]]           || die "remotion project not found: $REMOTION_DIR"
-[[ -d "$REMOTION_DIR/node_modules" ]] || die "dependencies missing — run: (cd \"$REMOTION_DIR\" && npm install)"
+
+# First run on a new machine: install the Remotion project's dependencies.
+if [[ ! -d "$REMOTION_DIR/node_modules" ]]; then
+  echo "› First run — installing Remotion dependencies (one-off, ~1 min)…" >&2
+  (cd "$REMOTION_DIR" && npm install) >&2 || die "npm install failed in $REMOTION_DIR"
+fi
 
 if [[ -n "$PROPS_PATH" ]]; then
   [[ -f "$PROPS_PATH" ]] || die "--props file not found: $PROPS_PATH"
