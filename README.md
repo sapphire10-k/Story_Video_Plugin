@@ -32,6 +32,11 @@ will trigger the skill automatically.
 
 ---
 
+> **Tip:** the manual terminal commands below assume the default install path
+> (`~/.claude/plugins/marketplaces/fordham-video/...`). It can vary by setup — the
+> reliable way is to just **ask Claude** to run setup/tests, since the skill
+> resolves the plugin location automatically via `${CLAUDE_PLUGIN_ROOT}`.
+
 ## One-time setup per machine
 
 ### 1. Node dependencies — automatic
