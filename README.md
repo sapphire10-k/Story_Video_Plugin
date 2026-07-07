@@ -87,9 +87,21 @@ cd ~/.claude/plugins/marketplaces/fordham-video/plugins/story-video/project && n
 ```
 
 ### 2. Voiceover credentials (cross-platform)
-The generator **auto-selects Magnific** if a `MAGNIFIC_API_KEY` is available,
-otherwise ElevenLabs. Credentials resolve from **env var → macOS Keychain →
-secrets file**, so this works on macOS, Windows, and Linux.
+
+**Easiest — run the setup helper** (interactive, works on every OS; hides your
+keys as you type and writes the config files for you):
+```bash
+python3 "<plugin>/scripts/setup.py"      # macOS / Linux
+python  "<plugin>\scripts\setup.py"      # Windows
+```
+It prompts for your ElevenLabs / Magnific API keys and your brand voice names +
+ids, then writes `~/.claude/remotion/secrets.json` and `voices.json`. Re-run any
+time to add or change entries. (Or just ask Claude to "run the video setup".)
+
+**Manual alternative.** The generator **auto-selects Magnific** if a
+`MAGNIFIC_API_KEY` is available, otherwise ElevenLabs. Credentials resolve from
+**env var → macOS Keychain → secrets file**, so this works on macOS, Windows,
+and Linux.
 
 **macOS — Keychain (secure):**
 ```bash
@@ -167,9 +179,40 @@ plugins/story-video/
 
 Output always lands in `~/03-OUTPUTS/video/YYYY-MM-DD-StoryVideo-<slug>.mp4`.
 
-## Updating the plugin
+## Updating to a new version
 
+The marketplace tracks the repo's `main` branch, so a new push is picked up once
+the marketplace catalog is refreshed. Custom marketplaces do **not** auto-update
+by default, so already-installed teammates must refresh + reinstall:
+
+**Desktop app (macOS/Windows):**
+1. **+** next to the prompt → **Plugins** → **Manage plugins** → **Marketplaces** tab.
+2. Select **fordham-video** and refresh it (or toggle **Enable auto-update**).
+3. **Installed** tab → **story-video** → **Uninstall**, then **Discover**/reinstall it.
+   (There's no dedicated "Update" button yet; reinstall is the documented path.)
+4. Run `/reload-plugins` in chat, or fully quit (⌘Q) and reopen.
+
+**Terminal CLI:**
+```
+/plugin marketplace update fordham-video
+/plugin uninstall story-video@fordham-video
+/plugin install story-video@fordham-video
+/reload-plugins
+```
+
+**Web client (claude.ai/code):** plugin *management* isn't available in the web UI.
+Cloud/web sessions load plugins from the **repo's** `.claude/settings.json`, so add
+this there (see [deploy/managed-settings.json](deploy/managed-settings.json) for the
+same content), commit, and push — cloud sessions then auto-install the latest at startup:
+```json
+{
+  "extraKnownMarketplaces": {
+    "fordham-video": { "source": { "source": "github", "repo": "sapphire10-k/Story_Video_Plugin" } }
+  },
+  "enabledPlugins": { "story-video@fordham-video": true }
+}
+```
+
+### Publishing a new version (maintainer)
 Bump `version` in both `.claude-plugin/marketplace.json` and
-`plugins/story-video/.claude-plugin/plugin.json`, commit, and push. Team members
-update via the desktop app's **Manage plugins** (or `/plugin marketplace update fordham-video`
-in the CLI), then reload.
+`plugins/story-video/.claude-plugin/plugin.json`, commit, and push `main`.
